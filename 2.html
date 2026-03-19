@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>校园代课系统</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+}
+
+/* 顶部 */
+.header{
+  color:#fff;
+  text-align:center;
+  padding:20px;
+  font-size:22px;
+  font-weight:bold;
+}
+
+/* 卡片 */
+.card{
+  background:#fff;
+  margin:15px;
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* 输入 */
+input,select{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:14px;
+}
+
+/* 按钮 */
+button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border:none;
+  border-radius:10px;
+  font-size:15px;
+  cursor:pointer;
+}
+
+.btn-main{
+  background:#4f46e5;
+  color:#fff;
+}
+
+.btn-del{
+  background:#ef4444;
+  color:#fff;
+  padding:6px 10px;
+  border-radius:8px;
+}
+
+/* 工单 */
+.task{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #eee;
+}
+
+.name{
+  font-weight:bold;
+}
+
+.info{
+  font-size:12px;
+  color:#666;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">📚 校园代课系统</div>
+
+<div class="card">
+  <input id="name" placeholder="输入你的名字">
+  <input type="date" id="date">
+  <select id="lesson">
+    <option>第1节课</option>
+    <option>第2节课</option>
+    <option>第3节课</option>
+    <option>第4节课</option>
+  </select>
+  <button class="btn-main" onclick="add()">发布工单</button>
+</div>
+
+<div class="card">
+  <div id="list"></div>
+</div>
+
+<script>
+const db = supabase.createClient(
+"https://kssebgtetkpaemmwrxsr.supabase.co",
+"sb_publishable_1avKuzBdqf45LE-jNoJIew_EC-o1Tf0"
+);
+
+// 自动填今天
+window.onload = function(){
+  let today = new Date().toISOString().split("T")[0];
+  document.getElementById("date").value = today;
+  load();
+}
+
+// 发布
+async function add(){
+  let username = document.getElementById("name").value;
+  let dateVal = document.getElementById("date").value;
+  let lessonVal = document.getElementById("lesson").value;
+
+  if(!username || !dateVal){
+    alert("请填写完整");
+    return;
+  }
+
+  let {error} = await db.from("tasks").insert([{
+    username,
+    date: dateVal,
+    lesson: lessonVal,
+    created_at: Date.now()
+  }]);
+
+  if(error){
+    alert("发布失败："+error.message);
+    console.log(error);
+    return;
+  }
+
+  document.getElementById("name").value = "";
+  load();
+}
+
+// 加载
+async function load(){
+  let {data,error} = await db.from("tasks")
+    .select("*")
+    .order("created_at",{ascending:false});
+
+  if(error){
+    console.log(error);
+    return;
+  }
+
+  let html="";
+  data.forEach(d=>{
+    html+=`
+    <div class="task">
+      <div>
+        <div class="name">👤 ${d.username}</div>
+        <div class="info">${d.date} · ${d.lesson}</div>
+      </div>
+      <button class="btn-del" onclick="del('${d.id}')">删除</button>
+    </div>`;
+  });
+
+  document.getElementById("list").innerHTML = html;
+}
+
+// 删除（强制版）
+async function del(id){
+  let {error} = await db.from("tasks").delete().eq("id",id);
+
+  if(error){
+    alert("删除失败："+error.message);
+    console.log(error);
+  }else{
+    load();
+  }
+}
+</script>
+
+</body>
+</html>
